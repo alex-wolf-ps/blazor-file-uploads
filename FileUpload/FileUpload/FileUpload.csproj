@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Antiforgery" Version="2.2.0" />
-    <ProjectReference Include="..\FileUpload2.Client\FileUpload2.Client.csproj" />
+    <ProjectReference Include="..\FileUpload.Client\FileUpload.Client.csproj" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.7.1" />

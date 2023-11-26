@@ -1,6 +1,6 @@
 using Azure.Storage.Blobs;
-using FileUpload2.Client.Pages;
-using FileUpload2.Components;
+using FileUpload.Client.Pages;
+using FileUpload.Components;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Azure;
