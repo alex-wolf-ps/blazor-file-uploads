@@ -43,7 +43,7 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(Wasm).Assembly);
+    .AddAdditionalAssemblies(typeof(WasmUpload).Assembly);
 
 app.MapGet("/antiforgery", (HttpContext context, IAntiforgery antiforgery) =>
 {
