@@ -1,4 +1,4 @@
-# Blazor File Uploads
+# Blazor File Uploads - Every Render Mode
 
 This sample app demonstrates how to upload files using Blazor using every render mode. It covers the following:
 
