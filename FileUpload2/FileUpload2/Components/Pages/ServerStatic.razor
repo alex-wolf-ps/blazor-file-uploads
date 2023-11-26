@@ -1,0 +1,68 @@
+﻿@page "/"
+@using Azure.Storage.Blobs
+@inject IWebHostEnvironment env
+@inject BlobServiceClient blobClient
+
+<div>
+    <h2 class="display-4">Static Server Upload</h2>
+    <p>This render mode is also known as "Blazor Server-side Rendering".</p>
+</div>
+
+@if (Message.Length > 0)
+{
+    <p class="alert alert-secondary" role="alert">@Message</p>
+}
+
+<EditForm Model="@Ticket" FormName="Tickets" method="post" OnValidSubmit="@HandleValidSubmit" enctype="multipart/form-data">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <InputText class="form-control mb-4" placeholder="Title" @bind-Value="@Ticket.Title" />
+    <InputText class="form-control mb-4" placeholder="Description" @bind-Value="@Ticket.Description" />
+    <InputFile class="form-control mb-4" placeholder="Attachment" name="Ticket.Attachment" />
+    <button class="btn btn-primary" type="submit">Submit</button>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm(FormName = "Tickets")]
+    private ServerStaticTicket Ticket { get; set; } = new();
+    private long maxFileSize = 5120000;
+    private string Message { get; set; } = String.Empty;
+
+    private async Task HandleValidSubmit()
+    {
+        // TODO: Save title and description to a database
+
+        try
+        {
+            // Save file locally
+            var path = Path.Combine(env.ContentRootPath, "images", Ticket.Attachment.FileName);
+            await using FileStream fs = new(path, FileMode.Create);
+            await Ticket.Attachment.CopyToAsync(fs);
+
+            // Upload file to blob storage
+            var rand = new Random().Next(10000);
+            var docsContainer = blobClient.GetBlobContainerClient("tickets");
+            await docsContainer.UploadBlobAsync(
+            $"{rand}_{Ticket.Attachment.FileName}",
+            Ticket.Attachment.OpenReadStream());
+
+            Ticket = new();
+            Message = "File uploaded!";
+        }
+        catch (Exception e)
+        {
+            Message = "Error: " + e.Message;
+        }
+    }
+
+    private class ServerStaticTicket
+    {
+        [Required]
+        public string Title { get; set; } = String.Empty;
+        [Required]
+        public string Description { get; set; } = String.Empty;
+        [Required]
+        public IFormFile Attachment { get; set; }
+    }
+}
+

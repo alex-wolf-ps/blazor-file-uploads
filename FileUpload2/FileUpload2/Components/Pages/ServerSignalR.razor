@@ -1,0 +1,70 @@
+﻿@page "/serversignalr"
+@using Azure.Storage.Blobs
+@inject IWebHostEnvironment env
+@inject BlobServiceClient blobClient
+@rendermode InteractiveServer
+
+<div>
+    <h2 class="display-4">Interactive Server Upload</h2>
+    <p>This render mode is also known as "Blazor Server with SignalR".</p>
+</div>
+
+@if (Message.Length > 0)
+{
+    <p class="alert alert-secondary" role="alert">@Message</p>
+}
+
+<EditForm Model="@Ticket" method="post" OnValidSubmit="@OnSubmit" enctype="multipart/form-data">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <InputText class="form-control mb-4" placeholder="Title" @bind-Value="@Ticket.Title" />
+    <InputText class="form-control mb-4" placeholder="Description" @bind-Value="@Ticket.Description" />
+    <InputFile class="form-control mb-4" OnChange="@SetFile" />
+    <button class="btn btn-primary" type="submit">Submit</button>
+</EditForm>
+
+@code {
+    private ServerSignalRTicket Ticket { get; set; } = new();
+    private long maxFileSize = 5120000;
+    private string Message { get; set; } = String.Empty;
+
+    private void SetFile(InputFileChangeEventArgs e)
+    {
+        Ticket.Attachment = e.File;
+    }
+
+    private async void OnSubmit()
+    {
+        try
+        {
+            // Save file locally
+            var path = Path.Combine(env.ContentRootPath, "images", Ticket.Attachment.Name);
+            await using FileStream fs = new(path, FileMode.Create);
+            await Ticket.Attachment.OpenReadStream(maxFileSize).CopyToAsync(fs);
+
+            // Upload file to blob storage
+            var rand = new Random().Next(10000);
+            var docsContainer = blobClient.GetBlobContainerClient("tickets");
+            await docsContainer.UploadBlobAsync(
+                $"{rand}_{Ticket.Attachment.Name}",
+                    Ticket.Attachment.OpenReadStream(maxFileSize));
+
+            Ticket = new();
+            Message = "File uploaded!";
+        }
+        catch(Exception e)
+        {
+            Message = "Error: " + e.Message;
+        }
+    }
+
+    private class ServerSignalRTicket
+    {
+        [Required]
+        public string Title { get; set; } = String.Empty;
+        [Required]
+        public string Description { get; set; } = String.Empty;
+        [Required]
+        public IBrowserFile Attachment { get; set; }
+    }
+}

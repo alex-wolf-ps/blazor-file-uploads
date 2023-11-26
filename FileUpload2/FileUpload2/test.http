@@ -1,0 +1,27 @@
+@WiredBrainCoffeeAPI_URL = https://localhost:7155
+
+POST {{WiredBrainCoffeeAPI_URL}}/upload
+Content-Type: application/x-www-form-urlencoded
+
+Title=jkaslefj&Description=jkalsejfase
+
+###
+
+POST {{WiredBrainCoffeeAPI_URL}}/upload
+Content-Type: application/json
+
+{
+  "title": "asefe",
+  "description": "555-123-4567"
+}
+
+###
+
+POST {{WiredBrainCoffeeAPI_URL}}/todo
+Content-Type: application/x-www-form-urlencoded
+
+Name=test
+
+###
+
+GET {{WiredBrainCoffeeAPI_URL}}/antiforgery

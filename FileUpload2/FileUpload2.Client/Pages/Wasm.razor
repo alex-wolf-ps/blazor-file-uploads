@@ -1,0 +1,86 @@
+﻿@page "/webassembly"
+@inject HttpClient client
+@rendermode InteractiveWebAssembly
+
+<div>
+    <h2 class="display-4">WebAssembly Upload</h2>
+    <p>Upload a file using Blazor WebAssembly.</p>
+</div>
+
+@if(Message.Length > 0)
+{
+    <p class="alert alert-secondary" role="alert">@Message</p>
+}
+
+<EditForm Model="@Ticket" method="post" OnValidSubmit="@OnSubmit" enctype="multipart/form-data">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <InputText class="form-control mb-4" placeholder="Title" @bind-Value="@Ticket.Title" />
+    <InputText class="form-control mb-4" placeholder="Description" @bind-Value="@Ticket.Description" />
+    <InputFile class="form-control mb-4" OnChange="@SetFile" />
+    <button class="btn btn-primary" type="submit">Submit</button>
+</EditForm>
+
+@code {
+    private WebAssemblyTicket Ticket { get; set; } = new();
+    private long maxFileSize = 5120000;
+    private string token { get; set; } = String.Empty;
+    private bool HasUploaded { get; set; }
+    private string Message { get; set; } = String.Empty;
+
+    private void SetFile(InputFileChangeEventArgs e)
+    {
+        Ticket.Attachment = e.File;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        token = await client.GetStringAsync("/antiforgery");
+    }
+
+    private async void OnSubmit()
+    {
+        try
+        {
+            using MultipartFormDataContent content = new();
+
+            // Add form values
+            content.Add(new StringContent(Ticket.Title), "Title");
+            content.Add(new StringContent(Ticket.Description), "Description");
+            content.Add(new StringContent(token), "__RequestVerificationToken");
+
+            // Add file attachment
+            var fileContent = new StreamContent(Ticket.Attachment.OpenReadStream(maxFileSize));
+            fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(Ticket.Attachment.ContentType);
+            content.Add(fileContent, "Attachment", Ticket.Attachment.Name);
+
+            // Send to API endpoint
+            var response = await client.PostAsync("/upload", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Message = "Upload successful!";
+            }
+            else
+            {
+                Message = "Upload failed. Error: " + response.ReasonPhrase;
+            }
+
+            Ticket = new();
+        } 
+        catch(Exception e)
+        {
+            Message = "Upload failed. Error: " + e.InnerException.Message;
+        }
+    }
+
+    private class WebAssemblyTicket
+    {
+        [Required]
+        public string Title { get; set; } = String.Empty;
+        [Required]
+        public string Description { get; set; } = String.Empty;
+        [Required]
+        public IBrowserFile Attachment { get; set; }
+    }
+}
