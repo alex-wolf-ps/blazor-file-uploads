@@ -1,5 +1,6 @@
 ﻿@page "/serversignalr"
 @using Azure.Storage.Blobs
+@using System.Net
 @inject IWebHostEnvironment env
 @inject BlobServiceClient blobClient
 @rendermode InteractiveServer
@@ -37,8 +38,10 @@
     {
         try
         {
+            string safeFileName = WebUtility.HtmlEncode(Ticket.Attachment.Name);
+
             // Save file locally
-            var path = Path.Combine(env.ContentRootPath, "images", Ticket.Attachment.Name);
+            var path = Path.Combine(env.ContentRootPath, "images", safeFileName);
             await using FileStream fs = new(path, FileMode.Create);
             await Ticket.Attachment.OpenReadStream(maxFileSize).CopyToAsync(fs);
 
@@ -46,7 +49,7 @@
             var rand = new Random().Next(10000);
             var docsContainer = blobClient.GetBlobContainerClient("tickets");
             await docsContainer.UploadBlobAsync(
-                $"{rand}_{Ticket.Attachment.Name}",
+                $"{rand}_{safeFileName}",
                     Ticket.Attachment.OpenReadStream(maxFileSize));
 
             Ticket = new();
@@ -56,6 +59,8 @@
         {
             Message = "Error: " + e.Message;
         }
+
+        // TODO: Save title, description and image nanme/reference to a database
     }
 
     private class ServerSignalRTicket

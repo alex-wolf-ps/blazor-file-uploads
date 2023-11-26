@@ -1,7 +1,6 @@
 ﻿@page "/"
-@using Azure.Storage.Blobs
 @inject IWebHostEnvironment env
-@inject BlobServiceClient blobClient
+@* @inject BlobServiceClient blobClient *@
 
 <div>
     <h2 class="display-4">Static Server Upload</h2>
@@ -13,38 +12,41 @@
     <p class="alert alert-secondary" role="alert">@Message</p>
 }
 
-<EditForm Model="@Ticket" FormName="Tickets" method="post" OnValidSubmit="@HandleValidSubmit" enctype="multipart/form-data">
+<EditForm Model="@Ticket" OnValidSubmit="@HandleValidSubmit" FormName="Tickets" method="post" enctype="multipart/form-data">
     <DataAnnotationsValidator />
     <ValidationSummary />
     <InputText class="form-control mb-4" placeholder="Title" @bind-Value="@Ticket.Title" />
     <InputText class="form-control mb-4" placeholder="Description" @bind-Value="@Ticket.Description" />
-    <InputFile class="form-control mb-4" placeholder="Attachment" name="Ticket.Attachment" />
+    <InputFile class="form-control mb-4" placeholder="Attachment" name="Ticket.Attachments" multiple />
     <button class="btn btn-primary" type="submit">Submit</button>
 </EditForm>
 
 @code {
     [SupplyParameterFromForm(FormName = "Tickets")]
     private ServerStaticTicket Ticket { get; set; } = new();
-    private long maxFileSize = 5120000;
     private string Message { get; set; } = String.Empty;
+    private long maxFileSize = 5120000;
 
     private async Task HandleValidSubmit()
     {
-        // TODO: Save title and description to a database
-
         try
         {
-            // Save file locally
-            var path = Path.Combine(env.ContentRootPath, "images", Ticket.Attachment.FileName);
-            await using FileStream fs = new(path, FileMode.Create);
-            await Ticket.Attachment.CopyToAsync(fs);
+            foreach(var file in Ticket.Attachments)
+            {
+                string safeFileName = WebUtility.HtmlEncode(file.FileName);
 
-            // Upload file to blob storage
-            var rand = new Random().Next(10000);
-            var docsContainer = blobClient.GetBlobContainerClient("tickets");
-            await docsContainer.UploadBlobAsync(
-            $"{rand}_{Ticket.Attachment.FileName}",
-            Ticket.Attachment.OpenReadStream());
+                // Save file locally
+                var path = Path.Combine(env.ContentRootPath, "images", safeFileName);
+                await using FileStream fs = new(path, FileMode.Create);
+                await file.CopyToAsync(fs);
+
+                // Uncomment to upload file to blob storage
+                // var rand = new Random().Next(10000);
+                // var docsContainer = blobClient.GetBlobContainerClient("tickets");
+                // await docsContainer.UploadBlobAsync(
+                // $"{rand}_{safeFileName}",
+                // file.OpenReadStream());
+            }
 
             Ticket = new();
             Message = "File uploaded!";
@@ -53,6 +55,8 @@
         {
             Message = "Error: " + e.Message;
         }
+
+        // TODO: Save title, description and image name/reference to a database
     }
 
     private class ServerStaticTicket
@@ -61,8 +65,8 @@
         public string Title { get; set; } = String.Empty;
         [Required]
         public string Description { get; set; } = String.Empty;
-        [Required]
-        public IFormFile Attachment { get; set; }
+
+        public IFormFileCollection Attachments { get; set; }
     }
 }
 
