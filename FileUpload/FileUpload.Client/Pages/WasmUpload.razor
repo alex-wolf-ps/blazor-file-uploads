@@ -1,5 +1,4 @@
 ﻿@page "/webassembly"
-@using System.Net
 @inject HttpClient client
 @rendermode InteractiveWebAssembly
 
@@ -18,7 +17,7 @@
     <ValidationSummary />
     <InputText class="form-control mb-4" placeholder="Title" @bind-Value="@Ticket.Title" />
     <InputText class="form-control mb-4" placeholder="Description" @bind-Value="@Ticket.Description" />
-    <InputFile class="form-control mb-4" OnChange="@SetFile" />
+    <InputFile class="form-control mb-4" multiple />
     <button class="btn btn-primary" type="submit">Submit</button>
 </EditForm>
 
@@ -27,12 +26,7 @@
     private long maxFileSize = 5120000;
     private string Message { get; set; } = String.Empty;
 
-    private void SetFile(InputFileChangeEventArgs e)
-    {
-        Ticket.Attachment = e.File;
-    }
-
-    private async void OnSubmit()
+    private async Task OnSubmit()
     {
         try
         {
@@ -42,11 +36,14 @@
             content.Add(new StringContent(Ticket.Title), "Title");
             content.Add(new StringContent(Ticket.Description), "Description");
 
-            // Add file attachment
-            string safeFileName = WebUtility.HtmlEncode(Ticket.Attachment.Name);
-            var fileContent = new StreamContent(Ticket.Attachment.OpenReadStream(maxFileSize));
-            fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(Ticket.Attachment.ContentType);
-            content.Add(fileContent, "Attachment", safeFileName);
+            foreach (var file in Ticket.Attachments)
+            {
+                // Add file attachment
+                string safeFileName = WebUtility.HtmlEncode(file.Name);
+                var fileContent = new StreamContent(file.OpenReadStream(maxFileSize));
+                fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(file.ContentType);
+                content.Add(fileContent, "Attachments", safeFileName);
+            }
 
             // Send to API endpoint
             var response = await client.PostAsync("/upload", content);
@@ -67,7 +64,7 @@
         public string Title { get; set; } = String.Empty;
         [Required]
         public string Description { get; set; } = String.Empty;
-        [Required]
-        public IBrowserFile Attachment { get; set; }
+        
+        public IReadOnlyList<IBrowserFile> Attachments { get; set; }
     }
 }

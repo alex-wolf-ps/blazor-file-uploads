@@ -2,7 +2,7 @@
 @using Azure.Storage.Blobs
 @using System.Net
 @inject IWebHostEnvironment env
-@inject BlobServiceClient blobClient
+@* @inject BlobServiceClient blobClient *@
 @rendermode InteractiveServer
 
 <div>
@@ -20,7 +20,7 @@
     <ValidationSummary />
     <InputText class="form-control mb-4" placeholder="Title" @bind-Value="@Ticket.Title" />
     <InputText class="form-control mb-4" placeholder="Description" @bind-Value="@Ticket.Description" />
-    <InputFile class="form-control mb-4" OnChange="@SetFile" />
+    <InputFile class="form-control mb-4" OnChange="@SetFile" multiple />
     <button class="btn btn-primary" type="submit">Submit</button>
 </EditForm>
 
@@ -31,36 +31,38 @@
 
     private void SetFile(InputFileChangeEventArgs e)
     {
-        Ticket.Attachment = e.File;
+        Ticket.Attachments = e.GetMultipleFiles();
     }
 
-    private async void OnSubmit()
+    private async Task OnSubmit()
     {
         try
         {
-            string safeFileName = WebUtility.HtmlEncode(Ticket.Attachment.Name);
+            foreach(var file in Ticket.Attachments)
+            {
+                string safeFileName = WebUtility.HtmlEncode(file.Name);
 
-            // Save file locally
-            var path = Path.Combine(env.ContentRootPath, "images", safeFileName);
-            await using FileStream fs = new(path, FileMode.Create);
-            await Ticket.Attachment.OpenReadStream(maxFileSize).CopyToAsync(fs);
+                // Save file locally
+                var path = Path.Combine(env.ContentRootPath, "images", safeFileName);
+                await using FileStream fs = new(path, FileMode.Create);
+                await file.OpenReadStream(maxFileSize).CopyToAsync(fs);
 
-            // Upload file to blob storage
-            var rand = new Random().Next(10000);
-            var docsContainer = blobClient.GetBlobContainerClient("tickets");
-            await docsContainer.UploadBlobAsync(
-                $"{rand}_{safeFileName}",
-                    Ticket.Attachment.OpenReadStream(maxFileSize));
+                // Upload file to blob storage
+                // var rand = new Random().Next(10000);
+                // var docsContainer = blobClient.GetBlobContainerClient("tickets");
+                // await docsContainer.UploadBlobAsync(
+                //     $"{rand}_{safeFileName}",
+                //         file.OpenReadStream(maxFileSize));
 
-            Ticket = new();
+                // TODO: Save title, description and image nanme/reference to a database
+            }
+
             Message = "File uploaded!";
         }
         catch(Exception e)
         {
             Message = "Error: " + e.Message;
         }
-
-        // TODO: Save title, description and image nanme/reference to a database
     }
 
     private class ServerSignalRTicket
@@ -69,7 +71,7 @@
         public string Title { get; set; } = String.Empty;
         [Required]
         public string Description { get; set; } = String.Empty;
-        [Required]
-        public IBrowserFile Attachment { get; set; }
+        
+        public IReadOnlyList<IBrowserFile> Attachments { get; set; }
     }
 }

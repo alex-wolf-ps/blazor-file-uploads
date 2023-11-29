@@ -44,34 +44,34 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(WasmUpload).Assembly);
 
-app.MapPost("/upload", async ([FromForm] TestTicket ticket,
-    [FromServices] IWebHostEnvironment env,
-    [FromServices] BlobServiceClient blobClient) =>
+app.MapPost("/upload", async ([FromForm] WebAssemblyTicket ticket,
+    [FromServices] IWebHostEnvironment env) =>
+    //[FromServices] BlobServiceClient blobClient) =>
 {
-    if (ticket.Attachment != null)
+    foreach(var file in ticket.Attachments)
     {
         // Save locally
-        string safeFileName = WebUtility.HtmlEncode(ticket.Attachment.FileName);
+        string safeFileName = WebUtility.HtmlEncode(file.FileName);
         var path = Path.Combine(env.ContentRootPath, "images", safeFileName);
         await using FileStream fs = new(path, FileMode.Create);
-        await ticket.Attachment.CopyToAsync(fs);
+        await file.CopyToAsync(fs);
 
         // Upload file to blob storage
-        var rand = new Random().Next(10000);
-        var docsContainer = blobClient.GetBlobContainerClient("tickets");
-        await docsContainer.UploadBlobAsync(
-            $"{rand}_{ticket.Attachment.FileName}",
-            ticket.Attachment.OpenReadStream());
+        //var rand = new Random().Next(10000);
+        //var docsContainer = blobClient.GetBlobContainerClient("tickets");
+        //await docsContainer.UploadBlobAsync(
+        //    $"{rand}_{file.FileName}",
+        //    file.OpenReadStream());
+
+        // TODO: Save title, description, image reference to a database
     }
-    
-    // TODO: Save title, description, image reference to a database
-});
+}).DisableAntiforgery();
 
 app.Run();
 
-class TestTicket
+class WebAssemblyTicket
 {
     public string Title { get; set; }
     public string Description { get; set; }
-    public IFormFile Attachment { get; set; }
+    public IFormFileCollection Attachments { get; set; }
 }
