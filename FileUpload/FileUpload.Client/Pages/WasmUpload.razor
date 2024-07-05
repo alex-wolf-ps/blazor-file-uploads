@@ -17,7 +17,7 @@
     <ValidationSummary />
     <InputText class="form-control mb-4" placeholder="Title" @bind-Value="@Ticket.Title" />
     <InputText class="form-control mb-4" placeholder="Description" @bind-Value="@Ticket.Description" />
-    <InputFile class="form-control mb-4" multiple />
+    <InputFile class="form-control mb-4" OnChange="@SetFile" multiple />
     <button class="btn btn-primary" type="submit">Submit</button>
 </EditForm>
 
@@ -25,6 +25,11 @@
     private WebAssemblyTicket Ticket { get; set; } = new();
     private long maxFileSize = 5120000;
     private string Message { get; set; } = String.Empty;
+
+    private void SetFile(InputFileChangeEventArgs e)
+    {
+        Ticket.Attachments = e.GetMultipleFiles();
+    }
 
     private async Task OnSubmit()
     {
